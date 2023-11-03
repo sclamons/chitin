@@ -1,0 +1,4 @@
+pixels_per_node=14
+!INCLUDE second_included_manifest.txt
+
+#This is also a comment.

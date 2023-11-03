@@ -1,0 +1,6 @@
+# This manifest 
+# is just
+# comments
+
+# and blank lines.
+!INCLUDE init_states/test_init_state.txt

@@ -1,0 +1,49 @@
+# Classic synchronous GH excitable media emulated by a
+# spinning-arrow surface CRN.
+#
+# Three initial states are provided:
+#
+# 1) spiral_init: The initial start state represents a single A in a field of Q,
+# but with initial arrows and states appropriate to avoid deadlock.
+#
+# 2) pulse_init: The initial start state represents a truncated line of A/R in a field of Q,
+# but with initial arrows and states appropriate to avoid deadlock.
+#
+# 3) random_init: The initial start state represents a random field of Q, A, R,
+# but with initial arrows and states appropriate to avoid deadlock.
+#
+# Please be patient; this simulation can take a few minutes to initialize.
+
+# Run settings
+pixels_per_node    = 1
+speedup_factor     = 10
+debug              = False
+rng_seed           = 123123123
+max_duration       = 5000
+node_display       = Color
+
+# Transition rules
+!START_TRANSITION_RULES
+!INCLUDE 3.2_GH_spinning_arrow_rules.txt
+!END_TRANSITION_RULES
+
+# Initial state
+# Leave one of the following three include statements uncommented,
+# depending on what initial condition you want.
+!START_INIT_STATE
+
+# Spiral wave
+#!INCLUDE 3.2_GH_spinning_arrow_spiral_init.txt
+
+# Single pulse
+!INCLUDE 3.2_GH_spinning_arrow_pulse_init.txt
+
+# Random start
+#!INCLUDE 3.2_GH_spinning_arrow_random_init.txt
+
+!END_INIT_STATE
+
+# Colormap
+!START_COLORMAP
+!INCLUDE 3.2_GH_spinning_arrow_colormap.txt
+!END_COLORMAP

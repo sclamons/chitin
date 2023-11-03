@@ -1,0 +1,20 @@
+[package]
+name = "chitin"
+version = "0.1.0"
+edition = "2021"
+debug = 1
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+itertools = "0.10.5"
+native-dialog = "0.6.3"
+peg = "0.8.1"
+rand = "0.8.5"
+flamescope = "0.1.2"
+flame = "0.2.1-pre"
+priq = "0.1.1"
+
+[dependencies.sdl2]
+version = "0.35.2"
+features = ["ttf", "image"]

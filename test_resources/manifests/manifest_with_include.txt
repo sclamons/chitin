@@ -1,0 +1,5 @@
+# This is a comment
+!INCLUDE first_included_manifest.txt
+wrap_grid=true
+
+!INCLUDE init_states/test_init_state.txt
