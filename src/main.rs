@@ -34,6 +34,7 @@ use crate::input::{load_from_file, get_input_file};
 // }
 
 fn main() {
+    let profiling = true;
     println!("Hello, world! Starting up...");
 
     // Initialize SDL2
@@ -101,7 +102,6 @@ fn main() {
             texture_creator.load_texture(Path::new(&format!("assets/Menu Buttons/Square Buttons/Colored Square Buttons/{source} col_Square Button.png"))).unwrap()
         );
     }
-
     let mut temp_surface = Surface::new(
         settings.cell_size * settings.n_cols as u32,
         renderer::PLAYBAR_BUTTON_HEIGHT,
@@ -173,8 +173,17 @@ fn main() {
     let mut rxn_sim_start_time: Instant;
     let mut avg_rxn_sim_time = one_tick / 10; // Random assumption of starting simulation timing.
     let mut n_rxns_timed = 0;
-    // The event loop!
-    flame::start("main");
+
+    println!("Size of components.state_timestamps: {:?}", sim_components.state_timestamps.len());
+
+    
+    if profiling {
+        flame::start("main");
+    }
+    
+    /////////////////////
+    // The event loop! //
+    /////////////////////
     'running: loop {
         // Initialize tick
         tick_start_time = Instant::now();
@@ -228,6 +237,9 @@ fn main() {
             // println!("Took too long ({:?})", tick_start_time.elapsed());
         }
     }
-    flame::end("main");
-    flamescope::dump(&mut File::create("flamescope.json").unwrap()).unwrap();
+    
+    if profiling {
+        flame::end("main");
+        flamescope::dump(&mut File::create("flamescope.json").unwrap()).unwrap();
+    }
 }

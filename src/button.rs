@@ -61,28 +61,30 @@ fn fire_mouse_event(
             global_state.tick = global_state.is_playing;
         },
         ButtonID::StepForward => {
-            let event = components.reaction_history[global_state.next_rxn_event];
-            simulator::apply_reaction(
-                &event, 
-                global_state, 
-                components, 
-                settings,
-                true);
-            global_state.current_t = event.t;
-            global_state.next_rxn_event += 1;
-            if global_state.next_rxn_event >= components.reaction_history.len() {
-                simulator::extend_reaction_history(components, global_state, settings);
-            }
-            // simulator::tick(global_state, components, settings);
+            // let event = components.reaction_history[global_state.next_rxn_event];
+            // simulator::apply_reaction(
+            //     &event, 
+            //     global_state, 
+            //     components, 
+            //     settings,
+            //     true);
+            // global_state.current_t = event.t;
+            // global_state.next_rxn_event += 1;
+            // if global_state.next_rxn_event >= components.reaction_history.len() {
+            //     simulator::extend_reaction_history(components, global_state, settings);
+            // }
+            global_state.tick = true;
+            global_state.run_direction_forward = true;
         },
         ButtonID::StepBackward => {
-            // println!("Firing StepBackward action.");
-            if global_state.next_rxn_event > 0 {
-                global_state.next_rxn_event -= 1;
-                let event = components.reaction_history[global_state.next_rxn_event];
-                simulator::apply_reaction(&event, global_state, components, settings, false);
-                global_state.current_t = event.t;
-            }
+            global_state.tick = true; 
+            global_state.run_direction_forward = false;
+            // if global_state.next_rxn_event > 0 {
+            //     global_state.next_rxn_event -= 1;
+            //     let event = components.reaction_history[global_state.next_rxn_event];
+            //     simulator::apply_reaction(&event, global_state, components, settings, false);
+            //     global_state.current_t = event.t;
+            // }
         },
         ButtonID::PlaybarBackground => {
             println!("Clicked in the playbar");

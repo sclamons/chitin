@@ -11,14 +11,14 @@ use crate::button::ButtonID;
 
 #[derive(Debug)]
 pub struct SimulatorComponents {
-    pub sizes: Vec<Size>,
-    pub positions: Vec<Position>,
-    pub current_states: Vec<usize>,
-    pub latest_states: Vec<usize>,
-    pub state_timestamps: Vec<f32>,
-    pub reaction_history: Vec<ReactionEvent>,
-    pub all_reactions: Vec<Reaction>,
-    pub all_rxn_rates: Vec<f32>,
+    pub sizes: Vec<Size>, // For graphics.
+    pub positions: Vec<Position>, // For graphics.
+    pub current_states: Vec<usize>, // Board state that is currently displayed.
+    pub latest_states: Vec<usize>, // Highest-T simulated board state.
+    pub state_timestamps: Vec<f32>, // The last time each position was changed.
+    pub reaction_history: Vec<ReactionEvent>, // A list of all the events that have happened.
+    pub all_reactions: Vec<Reaction>, // A list of reaction rules in the system.
+    pub all_rxn_rates: Vec<f32>, 
     pub state_names: HashMap<usize, String>,
     pub state_colorclasses: HashMap<usize, usize>,
     pub colorclass_names: Vec<String>,
@@ -70,7 +70,6 @@ impl SimulatorComponents {
         };
         self.state_ids.insert(String::from(name), self.n_states_known);
         self.state_names.insert(self.n_states_known, String::from(name));
-        self.state_timestamps.push(0.0);
         self.state_colorclasses.insert(self.n_states_known, color_id);
         self.n_states_known += 1;
         self.n_states_known - 1
@@ -96,13 +95,13 @@ impl SimulatorComponents {
             }
         }
         let new_rule = Reaction {
-            r1_idx: *(self.state_ids.get(&rule_description.r1).unwrap()),
-            r2_idx: match &rule_description.r2 {
+            r1_num: *(self.state_ids.get(&rule_description.r1).unwrap()),
+            r2_num: match &rule_description.r2 {
                 Some(name) => Some(*(self.state_ids.get(name).unwrap())),
                 None => None
             },
-            p1_idx: *(self.state_ids.get(&rule_description.p1).unwrap()),
-            p2_idx: match &rule_description.p2 {
+            p1_num: *(self.state_ids.get(&rule_description.p1).unwrap()),
+            p2_num: match &rule_description.p2 {
                 Some(name) => Some(*(self.state_ids.get(name).unwrap())),
                 None => None
             },
@@ -126,6 +125,7 @@ impl SimulatorComponents {
         let mut col = 0;
         for state_str in board_state {
             let state = *self.state_ids.get(state_str).unwrap();
+            self.state_timestamps.push(0.0);
             self.current_states.push(state);
             self.latest_states.push(state);
             self.sizes.push(Size{width: settings.cell_size, height: settings.cell_size});

@@ -64,8 +64,11 @@ pub fn pop_next_reaction(
         }
         let rxn = global_state.rxn_queue.pop().unwrap().1;
         next_rxn_candidate = Some(rxn);
-        if rxn.t_issued < components.state_timestamps[rxn.r1_idx]
-           || (rxn.r2_idx.is_some() && rxn.t_issued < components.state_timestamps[rxn.r2_idx.unwrap()]) {
+        // println!("{:?}", components.state_timestamps.len());
+        // println!("{:?}", rxn.r1_loc);
+        // println!("{:?}", rxn.r2_loc.unwrap());
+        if rxn.t_issued < components.state_timestamps[rxn.r1_loc]
+           || (rxn.r2_loc.is_some() && rxn.t_issued < components.state_timestamps[rxn.r2_loc.unwrap()]) {
             next_rxn_candidate = None;
         }
     }
@@ -86,19 +89,19 @@ pub fn apply_reaction(
 ) {
     let next_rxn: &Reaction = &components.all_reactions[next_event.rxn_idx];
     if forward {
-        assert_eq!(components.current_states[next_event.r1_idx], next_rxn.r1_idx);
-        components.current_states[next_event.r1_idx] = next_rxn.p1_idx;
-        if next_event.r2_idx.is_some() {
-            let r2_idx = next_event.r2_idx.unwrap();
-            components.current_states[r2_idx] = next_rxn.p2_idx.unwrap();
+        assert_eq!(components.current_states[next_event.r1_loc], next_rxn.r1_num);
+        components.current_states[next_event.r1_loc] = next_rxn.p1_num;
+        if next_event.r2_loc.is_some() {
+            let r2_loc = next_event.r2_loc.unwrap();
+            components.current_states[r2_loc] = next_rxn.p2_num.unwrap();
         }
     }
     else {
-        assert_eq!(components.current_states[next_event.r1_idx], next_rxn.p1_idx);
-        components.current_states[next_event.r1_idx] = next_rxn.r1_idx;
-        if next_event.r2_idx.is_some() {
-            assert_eq!(components.current_states[next_event.r2_idx.unwrap()], next_rxn.p2_idx.unwrap());
-            components.current_states[next_event.r2_idx.unwrap()] = next_rxn.r2_idx.unwrap();
+        assert_eq!(components.current_states[next_event.r1_loc], next_rxn.p1_num);
+        components.current_states[next_event.r1_loc] = next_rxn.r1_num;
+        if next_event.r2_loc.is_some() {
+            assert_eq!(components.current_states[next_event.r2_loc.unwrap()], next_rxn.p2_num.unwrap());
+            components.current_states[next_event.r2_loc.unwrap()] = next_rxn.r2_num.unwrap();
         }
     }
 }
@@ -107,21 +110,9 @@ pub fn apply_reaction(
 /// or during idle time between frames. Always fires based on the last-simulated
 /// event in the reaction history.
 pub fn extend_reaction_history(components: &mut SimulatorComponents, global_state: &mut SimulatorState, settings: &Settings) {
-    let mut found_next_event = false;
-    let mut maybe_next_event = None;
-    while !found_next_event {
-        maybe_next_event = pop_next_reaction(global_state, components);
-        if maybe_next_event.is_none() {
-            return
-        }
-        let next_event = maybe_next_event.unwrap();
-        if components.state_timestamps[next_event.r1_idx] > next_event.t_issued {
-            continue
-        }
-        if next_event.r2_idx.is_some() && components.state_timestamps[next_event.r2_idx.unwrap()] > next_event.t_issued {
-            continue
-        }
-        found_next_event = true;
+    let maybe_next_event = pop_next_reaction(global_state, components); 
+    if maybe_next_event.is_none() {
+        return
     }
     let next_event: ReactionEvent = maybe_next_event.unwrap();
     let next_rxn = components.all_reactions[next_event.rxn_idx];
@@ -129,26 +120,32 @@ pub fn extend_reaction_history(components: &mut SimulatorComponents, global_stat
 
     // Apply changes from this new reaction to the last-computed state, including 
     // timestamp updates.
-    components.latest_states[next_event.r1_idx] = next_rxn.p1_idx;
-    components.state_timestamps[next_event.r1_idx] = next_event.t;
-    if next_event.r2_idx.is_some() {
-        components.latest_states[next_event.r2_idx.unwrap()] = next_rxn.p2_idx.unwrap();
-        components.state_timestamps[next_event.r2_idx.unwrap()] = next_event.t;
+    components.latest_states[next_event.r1_loc] = next_rxn.p1_num;
+    components.state_timestamps[next_event.r1_loc] = next_event.t;
+    if next_event.r2_loc.is_some() {
+        components.latest_states[next_event.r2_loc.unwrap()] = next_rxn.p2_num.unwrap();
+        components.state_timestamps[next_event.r2_loc.unwrap()] = next_event.t;
     }
     
     // Check if (either of) the changed state(s) can react, and if so add those reactions
     // to the queue.
-    check_for_new_reactions_at(next_event.r1_idx, components, global_state, settings, true);
-    if next_event.r2_idx.is_some() {
-        check_for_new_reactions_at(next_event.r2_idx.unwrap(), components, global_state, settings, true);
+    check_for_new_reactions_at(next_event.r1_loc, components, global_state, settings, true);
+    if next_event.r2_loc.is_some() {
+        check_for_new_reactions_at(next_event.r2_loc.unwrap(), components, global_state, settings, true);
     }
-    
+}
+
+/// Fills a channel with reaction events. Intended to be run in its own thread.
+pub fn extend_reaction_history_threaded() {
+
 }
 
 /// Look for any reactions that can occur at this positon, and add them to the queue.
-/// ONLY applies to the latest-simulated state. 
-/// symmetric=true means that the position can be either reactant; otherwise, it can
-/// only be the first reactant.
+/// ONLY applies to the latest-simulated state -- earlier board states are 
+/// already calculated. 
+/// symmetric=true (what we usually want) means that the position can be either 
+/// reactant; otherwise, only the first state can react (useful for setting up the 
+/// initial reaction queue at the beginning of the simulation).
 fn check_for_new_reactions_at(
     idx: usize,
     components: &SimulatorComponents,
@@ -158,8 +155,8 @@ fn check_for_new_reactions_at(
 ) {
     for rxn_idx in 0..components.all_reactions.len() {
         let rxn = &(components.all_reactions[rxn_idx]);
-        if components.latest_states[idx] == rxn.r1_idx {
-            match rxn.r2_idx {
+        if components.latest_states[idx] == rxn.r1_num {
+            match rxn.r2_num {
                 Some(r2) => {
                     let neighbors = square_neighbors(
                         idx, 
@@ -172,15 +169,16 @@ fn check_for_new_reactions_at(
                         if neighbor_state == r2 {
                             let next_t = compute_next_t(components, rxn_idx);
                             let new_event = ReactionEvent{
-                                r1_idx: components.latest_states[idx],
-                                r2_idx: Some(neighbor_state),
-                                rxn_idx,
+                                r1_loc: idx,
+                                r2_loc: Some(neighbor_idx),
+                                rxn_idx: rxn_idx,
                                 t: next_t,
                                 t_issued: match components.reaction_history.last() {
                                     Some(event) => event.t,
                                     None => 0.0
                                 }
                             };
+                            // println!("(1) Adding ReactionEvent at t={next_t}: {new_event:?}");
                             global_state.rxn_queue.put(next_t, new_event);
                         }
                     }
@@ -188,20 +186,21 @@ fn check_for_new_reactions_at(
                 None => {
                     let next_t = compute_next_t(components, rxn_idx);
                     let new_event = ReactionEvent{
-                        r1_idx: components.latest_states[idx],
-                        r2_idx: None,
-                        rxn_idx,
+                        r1_loc: idx,
+                        r2_loc: None,
+                        rxn_idx: rxn_idx,
                         t: next_t,
                         t_issued: match components.reaction_history.last() {
                             Some(event) => event.t,
                             None => 0.0
                         }
                     };
+                    // println!("(2) Adding ReactionEvent at t={next_t}: {new_event:?}");
                     global_state.rxn_queue.put(next_t, new_event);
                 }
             }
-        } else if symmetric && rxn.r2_idx.is_some() 
-                    && components.latest_states[idx] == rxn.r2_idx.unwrap() {
+        } else if symmetric && rxn.r2_num.is_some() 
+                    && components.latest_states[idx] == rxn.r2_num.unwrap() {
             let neighbors = square_neighbors(
                 idx, 
                 settings.n_cols, 
@@ -210,18 +209,19 @@ fn check_for_new_reactions_at(
             );
             for neighbor_idx in neighbors {
                 let neighbor_state = components.latest_states[neighbor_idx];
-                if neighbor_state == rxn.r1_idx {
+                if neighbor_state == rxn.r1_num {
                     let next_t = compute_next_t(components, rxn_idx);
                     let new_event = ReactionEvent{
-                        r1_idx: neighbor_state,
-                        r2_idx: Some(components.latest_states[idx]),
-                        rxn_idx,
+                        r1_loc: neighbor_idx,
+                        r2_loc: Some(idx),
+                        rxn_idx: rxn_idx,
                         t: next_t,
                         t_issued: match components.reaction_history.last() {
                             Some(event) => event.t,
                             None => 0.0
                         }
                     };
+                    // println!("(3) Adding ReactionEvent at t={next_t}: {new_event:?}");
                     global_state.rxn_queue.put(next_t, new_event);
                 }
             }
@@ -325,7 +325,6 @@ pub fn tick(global_state: &mut SimulatorState, components: &mut SimulatorCompone
                 extend_reaction_history(components, global_state, settings);
             }
             next_event = components.reaction_history[global_state.next_rxn_event];
-            
         }
     } else {
         global_state.current_t -= settings.speedup_factor * 1.0 / settings.fps;
@@ -348,6 +347,9 @@ pub fn tick(global_state: &mut SimulatorState, components: &mut SimulatorCompone
                 next_event = components.reaction_history[global_state.next_rxn_event - 1];
             }
         }
+    }
+    if !global_state.is_playing {
+        global_state.tick = false;
     }
 }
 
